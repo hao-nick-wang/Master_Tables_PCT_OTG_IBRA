@@ -69,7 +69,7 @@ url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/B
 destfile <- paste0(tempfile(),'.xls')
 download.file(url = url1, destfile = paste0(destfile), method = "curl")
 ## Copying the file into data lake 
-dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT.xlsx'))
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Input_data/BioNet_PCT.xlsx'))
 
 # COMMAND ----------
 
@@ -79,7 +79,7 @@ url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/B
 destfile <- paste0(tempfile(),'.xlsx')
 download.file(url = url1, destfile = paste0(destfile), method = "curl")
 ## Copying the file into data lake 
-dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT_Association_data.xlsx'))
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/master_demand_supply_dashboard/Input_data/BioNet_PCT_Association_data.xlsx'))
 
 # COMMAND ----------
 
@@ -95,7 +95,7 @@ dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_O
 
 # COMMAND ----------
 
-dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT.xlsx'),"file:/tmp/BioNet_PCT.xlsx")
+dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Input_data/BioNet_PCT.xlsx'),"file:/tmp/BioNet_PCT.xlsx")
 excel_sheets('/tmp/BioNet_PCT.xlsx')
 
 bionet_data <- read_excel('/tmp/BioNet_PCT.xlsx', sheet = "PCT Data PQ" )
@@ -116,7 +116,7 @@ dim(bionet_data)
 
 # COMMAND ----------
 
-dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT_Association_data.xlsx'),"file:/tmp/BioNet_PCT_Association_data.xlsx")
+dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Input_data/BioNet_PCT_Association_data.xlsx'),"file:/tmp/BioNet_PCT_Association_data.xlsx")
 excel_sheets('/tmp/BioNet_PCT_Association_data.xlsx')
 
 bionet_associated <- read_excel('/tmp/BioNet_PCT_Association_data.xlsx', sheet = "All PCTs - State TECs Data PQ" )
@@ -142,12 +142,15 @@ display(bionet_associated)
 ### Potential error from bionet ####
 ### Certain PCT's have assesed TEC but no TECName - we will create their TEC Name as we are doing with No Associated TECs
 
-potential_errors <- bionet_associated[bionet_associated$TECAssessed == 'Has associated TEC' & is.na(bionet_associated$TECName)==T, ]
-length(unique(potential_errors$PCTID))
+#potential_errors <- bionet_associated[bionet_associated$TECAssessed == 'Has associated TEC' & is.na(bionet_associated$TECName)==T, ]
+#length(unique(potential_errors$PCTID))
 
 # COMMAND ----------
 
-non_tec <- bionet_data[bionet_data$TECAssessed == 'No associated TEC'| bionet_data$PCTID %in% potential_errors$PCTID,]  ## Filtering Non_associated_TECs
+non_tec <- bionet_data 
+
+
+##[bionet_data$TECAssessed == 'No associated TEC'| bionet_data$PCTID %in% potential_errors$PCTID,]  ## Filtering Non_associated_TECs
 
 # COMMAND ----------
 
@@ -184,7 +187,7 @@ complete_nontec <- merge(pct_otg_nontec,non_tec, by.x = 'PCTID', by.y = 'PCTID',
 
 # COMMAND ----------
 
-display(complete_nontec[complete_nontec$PCTID==689,])
+display(complete_nontec[complete_nontec$PCTID==44,])
 
 # COMMAND ----------
 
@@ -221,7 +224,7 @@ dim(complete_non_tec_splitted)
 
 # COMMAND ----------
 
-display(complete_non_tec_splitted[complete_non_tec_splitted$PCTID==689,])
+display(complete_non_tec_splitted[complete_non_tec_splitted$PCTID==44,])
 
 # COMMAND ----------
 
@@ -229,7 +232,7 @@ complete_nontec_final <- merge(complete_non_tec_splitted, complete_nontec, by.x 
 
 # COMMAND ----------
 
-display(complete_nontec_final[complete_nontec_final$PCTID==689,])
+display(complete_nontec_final[complete_nontec_final$PCTID==44,])
 
 # COMMAND ----------
 
@@ -243,9 +246,11 @@ complete_nontec_final <- complete_nontec_final %>%
    select(PCTID, PCTName, IBRASubregion.x, OTG.x, status, classificationType, classificationConfidenceLevel, vegetationClass, vegetationFormation, IBRA, county, landscapeName, isADerivedPlantCommunityType, originalCommunityThisPCTDerivedFrom, derivedFromCommunityTypeComment, vegetationDescription, variationAndNaturalDisturbance, fireRegime, PCTPercentClearedStatus, PCTPercentCleared, PCTPercentClearedAccuracy, PCTPercentClearedComments,PCTPercentClearedSource, preEuropeanExtent, preEuropeanAccuracy, 
 preEuropeanQualifiers, preEuropeanComments,currentExtent, currentAccuracy,currentQualifiers,currentComments, TECAssessed)
 
+complete_nontec_final$TECAssessed <- 'No associated TEC'  ### assuming a Non TEC case for all cases
+
 # COMMAND ----------
 
-display(complete_nontec_final[complete_nontec_final$PCTID==689,])
+display(complete_nontec_final[complete_nontec_final$PCTID==44,])
 
 # COMMAND ----------
 
@@ -258,7 +263,9 @@ dim(complete_nontec_final)
 
 # COMMAND ----------
 
-tec <- bionet_data[bionet_data$TECAssessed == 'Has associated TEC' & !(bionet_data$PCTID %in% potential_errors$PCTID),]
+#tec <- bionet_data[bionet_data$TECAssessed == 'Has associated TEC' & !(bionet_data$PCTID %in% potential_errors$PCTID),]
+
+tec <- bionet_data[bionet_data$TECAssessed == 'Has associated TEC' ,]
 
 # COMMAND ----------
 
@@ -296,7 +303,7 @@ complete <- merge(tec_splitted, tec, by.x = 'PCTID', by.y = 'PCTID', all.x = T)
 # COMMAND ----------
 
 #dim(complete)
-display(complete)
+display(complete[complete$PCTID == 44,])
 
 # COMMAND ----------
 
@@ -325,7 +332,7 @@ complete_splitted <- complete_splitted %>%
   select(PCTID,stateTECProfileID.x, val)%>%
   rename(IBRASubregion = val)
 
-display(complete_splitted)
+display(complete_splitted[complete_splitted$PCTID == 44,])
   
 
 # COMMAND ----------
@@ -361,7 +368,7 @@ dim(complete_tec_otg)
 
 # COMMAND ----------
 
-display(complete_tec_otg)
+display(complete_tec_otg[complete_tec_otg$PCTID == 44,])
 
 # COMMAND ----------
 
@@ -372,7 +379,7 @@ preEuropeanQualifiers, preEuropeanComments,currentExtent, currentAccuracy,curren
 
 # COMMAND ----------
 
-display(complete_tec_otg)
+display(complete_tec_otg[complete_tec_otg$PCTID == 44,])
 
 # COMMAND ----------
 
@@ -381,6 +388,12 @@ dim(complete_tec_otg)
 # COMMAND ----------
 
 dim(complete_nontec_final)
+
+# COMMAND ----------
+
+### Removing cases duplicated
+
+complete_tec_otg <- complete_tec_otg[!((is.na(complete_tec_otg$OTG.x)==T) & (is.na(complete_tec_otg$PCTPercentCleared) ==F)) ,] 
 
 # COMMAND ----------
 
@@ -436,6 +449,16 @@ display(all_pct[all_pct$PCTID==689,])
 # COMMAND ----------
 
 length(unique(all_pct$PCTID))
+
+# COMMAND ----------
+
+display(all_pct)
+
+# COMMAND ----------
+
+#### Correcting OTG in extended table
+
+all_pct$OTGName <- ifelse(all_pct$stateTECProfileID == '10837' & is.na(all_pct$stateTECProfileID)==F, 'White Box - Yellow Box - Blakely’s Red Gum Grassy Woodland and Derived Native Grassland in the NSW North Coast, New England Tableland, Nandewar, Brigalow Belt South, Sydney Basin, South Eastern Highlands, NSW South Western Slopes, South East Corner and Riverina Bioregions', all_pct$OTGName)
 
 # COMMAND ----------
 
@@ -546,7 +569,7 @@ display(all_attributes)
 
 ### Removing attributes specific to each otg
 all_attributes_pct  <- all_attributes%>%
- select(-c(stateTECProfileID, threats, habitatAndEcology,classOfCredit,sensitivityToLoss,sensitivityToLossJustification,SAII))
+ select(-c(stateTECProfileID, threats, habitatAndEcology,classOfCredit,sensitivityToLoss,sensitivityToLossJustification,SAII, TECAssessed))
 
 all_attributes_pct <- unique(all_attributes_pct)
 
@@ -572,6 +595,12 @@ display(extended_pct_final[extended_pct_final$PCTID==689,])
 
 # COMMAND ----------
 
+extended_pct_final <- extended_pct_final %>% distinct()
+display(extended_pct_final)
+dim(extended_pct_final)
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC 
 # MAGIC #Saving tables to DL
@@ -583,17 +612,17 @@ display(extended_pct_final)
 # COMMAND ----------
 
 write.csv(all_pct, '/tmp/Master_extended.csv', row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/Output_data/Master_extended.csv'))
+dbutils.fs.cp(paste0('file:','/tmp/Master_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_extended.csv'))
 
 # COMMAND ----------
 
 write.csv(extended_pct_otg_final, '/tmp/Master_PCTOTGGrouped_extended.csv',row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_PCTOTGGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/Output_data/Master_PCTOTGGrouped_extended.csv'))
+dbutils.fs.cp(paste0('file:','/tmp/Master_PCTOTGGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_PCTOTGGrouped_extended.csv'))
 
 # COMMAND ----------
 
 write.csv(extended_pct_final, '/tmp/Master_PCTGrouped_extended.csv',row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_PCTGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/Output_data/Master_PCTGrouped_extended.csv'))
+dbutils.fs.cp(paste0('file:','/tmp/Master_PCTGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_PCTGrouped_extended.csv'))
 
 
 # COMMAND ----------
