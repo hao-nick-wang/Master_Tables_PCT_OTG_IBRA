@@ -28,6 +28,13 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC BioNet Threatened Species to Plant Community Types Association data
+# MAGIC 
+# MAGIC https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/BioNet/bionet-threatened-species-to-plant-community-types-association-data.xlsx
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC 
 # MAGIC ###Uploading Libraries and functions
 
@@ -75,11 +82,21 @@ dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_O
 
 ### Download the file
 options(download.file.method="curl", download.file.extra="-k -L")
-url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/BioNet/bionet-threatened-ecological-community-to-plant-community-types-association-data.xlsx'
+url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/BioNet/bionet-threatened-species-to-plant-community-types-association-data.xlsx'
 destfile <- paste0(tempfile(),'.xlsx')
 download.file(url = url1, destfile = paste0(destfile), method = "curl")
 ## Copying the file into data lake 
-dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/master_demand_supply_dashboard/Input_data/BioNet_PCT_Association_data.xlsx'))
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Input_data/BioNet_PCT_Association_data.xlsx'))
+
+# COMMAND ----------
+
+### Download the file
+options(download.file.method="curl", download.file.extra="-k -L")
+url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/BioNet/bionet-threatened-species-to-plant-community-types-association-data.xlsx'
+destfile <- paste0(tempfile(),'.xlsx')
+download.file(url = url1, destfile = paste0(destfile), method = "curl")
+## Copying the file into data lake 
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Input_data/BioNet_Species_Association_data.xlsx'))
 
 # COMMAND ----------
 
@@ -124,6 +141,17 @@ bionet_associated <- read_excel('/tmp/BioNet_PCT_Association_data.xlsx', sheet =
 # COMMAND ----------
 
 display(bionet_associated)
+
+# COMMAND ----------
+
+dir('/tmp/')
+
+# COMMAND ----------
+
+dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Input_data/BioNet_Species_Association_data.xlsx'),"file:/tmp/BioNet_Species_Association_data.xlsx")
+excel_sheets('/tmp/BioNet_Species_Association_data.xlsx')
+
+bionet_spec_associated <- read_excel('/tmp/BioNet_Species_Association_data.xlsx', sheet = "Threatened Species-PCT Data PQ")
 
 # COMMAND ----------
 
@@ -462,167 +490,63 @@ all_pct$OTGName <- ifelse(all_pct$stateTECProfileID == '10837' & is.na(all_pct$s
 
 # COMMAND ----------
 
+IBRA_table <- all_pct[,c('IBRASubregionID', 'IBRASubregion')]
+IBRA_table <- unique(IBRA_table)
+IBRA_table <- IBRA_table %>%
+ arrange(IBRASubregionID)
+display(IBRA_table)
+
+# COMMAND ----------
+
+PCT_table <- all_pct[,c('PCTID', 'PCTName')]
+PCT_table <- unique(PCT_table)
+PCT_table <- PCT_table %>%
+ arrange(PCTID)
+display(PCT_table)
+
+# COMMAND ----------
+
+OTG_table <- all_pct[,c('OTGName')]
+OTG_table <- unique(OTG_table)
+OTG_table <- OTG_table %>%
+ arrange(OTGName) %>%
+ mutate(OTG_ID = row_number())
+display(OTG_table)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 
+# MAGIC Preparating tables by entity
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC 
-# MAGIC # Preparing Extended grouped by PCT and OTG
+# MAGIC ###Saving Results
 
 # COMMAND ----------
 
-grouping_table <- all_pct[,c('PCTID','PCTName','stateTECProfileID','IBRASubregion','OTGName')]
+#write.csv(all_pct, '/tmp/Master_extended.csv', row.names = FALSE)
+#dbutils.fs.cp(paste0('file:','/tmp/Master_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_extended.csv'))
 
 # COMMAND ----------
 
-display(grouping_table[grouping_table$PCTID==3020,])
+#write.csv(extended_pct_otg_final, '/tmp/Master_PCTOTGGrouped_extended.csv',row.names = FALSE)
+#dbutils.fs.cp(paste0('file:','/tmp/Master_PCTOTGGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_PCTOTGGrouped_extended.csv'))
 
 # COMMAND ----------
 
-unique_pct_otg <- grouping_table %>%
-    group_by(PCTID,PCTName, stateTECProfileID,OTGName) %>%
-    mutate(grp = row_number()) %>%
-    pivot_wider(names_from = grp, values_from = IBRASubregion, names_prefix = 'Val') %>%
-    ungroup()
-
-unique_pct_otg <- unique_pct_otg %>% unite(IBRASubregion, 5:ncol(unique_pct_otg), sep="; ")
-
-library(stringi)
-unique_pct_otg$IBRASubregion <- trimws(stri_match_first_regex(unique_pct_otg$IBRASubregion, "(.*?)\\; NA;")[,2],'both')
-
-# COMMAND ----------
-
-display(unique_pct_otg[unique_pct_otg$PCTID==689,])
-
-# COMMAND ----------
-
-dim(unique_pct_otg)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ###Adding Attributes
-
-# COMMAND ----------
-
-all_attributes<- all_pct%>%
- select(-c(PCTName,IBRASubregionID,IBRASubregion, OTGName))
-
-all_attributes <- unique(all_attributes)
-
-# COMMAND ----------
-
-display(all_attributes)
-dim(all_attributes)
-
-# COMMAND ----------
-
-extended_pct_otg_final <- merge(unique_pct_otg, all_attributes, by.x = c('PCTID','stateTECProfileID'), by.y = c('PCTID','stateTECProfileID'), all.x = T)
-dim(extended_pct_otg_final)
-
-# COMMAND ----------
-
-extended_pct_otg_final <- extended_pct_otg_final %>% 
-   relocate(PCTName, .after = PCTID) %>%
-   arrange(PCTID, stateTECProfileID)
-
-# COMMAND ----------
-
-display(extended_pct_otg_final)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC 
-# MAGIC #Preparing Extended grouped by PCT
-
-# COMMAND ----------
-
-unique_pct <- unique_pct_otg %>%
-    select(PCTID, PCTName, OTGName, IBRASubregion) %>%
-    group_by(PCTID,PCTName, IBRASubregion) %>%
-    mutate(grp = row_number()) %>%
-    pivot_wider(names_from = grp, values_from = OTGName, names_prefix = 'Val') %>%
-    ungroup()
-
-unique_pct <- unique_pct %>% unite(OTGName, 4:ncol(unique_pct), sep="; ")
-
-library(stringi)
-unique_pct$OTGName <- trimws(stri_match_first_regex(unique_pct$OTGName, "(.*?)\\; NA;")[,2],'both')
-
-# COMMAND ----------
-
-display(unique_pct[unique_pct$PCTID==689,])
-
-# COMMAND ----------
-
-dim(unique_pct)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC 
-# MAGIC ###Adding Attributes
-
-# COMMAND ----------
-
-display(all_attributes)
-
-# COMMAND ----------
-
-### Removing attributes specific to each otg
-all_attributes_pct  <- all_attributes%>%
- select(-c(stateTECProfileID, threats, habitatAndEcology,classOfCredit,sensitivityToLoss,sensitivityToLossJustification,SAII, TECAssessed))
-
-all_attributes_pct <- unique(all_attributes_pct)
-
-# COMMAND ----------
-
-dim(all_attributes_pct)
-#display(all_attributes_pct)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC 
-# MAGIC Merging with attributes
-
-# COMMAND ----------
-
-extended_pct_final <- merge(unique_pct, all_attributes_pct, by.x = c('PCTID'), by.y = c('PCTID'), all.x = T)
-dim(extended_pct_final)
-
-# COMMAND ----------
-
-display(extended_pct_final[extended_pct_final$PCTID==689,])
-
-# COMMAND ----------
-
-extended_pct_final <- extended_pct_final %>% distinct()
-display(extended_pct_final)
-dim(extended_pct_final)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC 
-# MAGIC #Saving tables to DL
-
-# COMMAND ----------
-
-display(extended_pct_final)
-
-# COMMAND ----------
-
-write.csv(all_pct, '/tmp/Master_extended.csv', row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_extended.csv'))
-
-# COMMAND ----------
-
-write.csv(extended_pct_otg_final, '/tmp/Master_PCTOTGGrouped_extended.csv',row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_PCTOTGGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_PCTOTGGrouped_extended.csv'))
-
-# COMMAND ----------
-
-write.csv(extended_pct_final, '/tmp/Master_PCTGrouped_extended.csv',row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_PCTGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_PCTGrouped_extended.csv'))
+#write.csv(extended_pct_final, '/tmp/Master_PCTGrouped_extended.csv',row.names = FALSE)
+#dbutils.fs.cp(paste0('file:','/tmp/Master_PCTGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master_demand_supply_dashboard/Output_data/Master_PCTGrouped_extended.csv'))
 
 
 # COMMAND ----------
@@ -655,3 +579,29 @@ dbutils.fs.cp(paste0('file:','/tmp/Master_PCTGrouped_extended.csv'), paste0('/mn
 #web = ctx.web
 #ctx.load(web).execute_query()
 
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 
+# MAGIC #Species
+
+# COMMAND ----------
+
+display(bionet_spec_associated)
+
+# COMMAND ----------
+
+bionet_spec <- bionet_spec_associated%>%
+  select(profileID, scientificName, vernacularName, kingdom) %>%
+  rename(Species_ID = profileID) %>%
+  rename(Species_Scientific_Name = scientificName) %>%
+  rename(Species_Common_Name = vernacularName) %>% 
+  rename(Kingdom = kingdom) %>%
+  arrange(Species_ID)
+
+bionet_spec <- unique(bionet_spec)
+
+# COMMAND ----------
+
+display(bionet_spec)
