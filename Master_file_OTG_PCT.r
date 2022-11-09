@@ -69,7 +69,7 @@ url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/B
 destfile <- paste0(tempfile(),'.xls')
 download.file(url = url1, destfile = paste0(destfile), method = "curl")
 ## Copying the file into data lake 
-dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT.xlsx'))
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_PCT.xlsx'))
 
 # COMMAND ----------
 
@@ -79,7 +79,27 @@ url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/B
 destfile <- paste0(tempfile(),'.xlsx')
 download.file(url = url1, destfile = paste0(destfile), method = "curl")
 ## Copying the file into data lake 
-dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT_Association_data.xlsx'))
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_PCT_Association_data.xlsx'))
+
+# COMMAND ----------
+
+### Download the file
+options(download.file.method="curl", download.file.extra="-k -L")
+url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/BioNet/bionet-threatened-species-to-plant-community-types-association-data.xlsx'
+destfile <- paste0(tempfile(),'.xlsx')
+download.file(url = url1, destfile = paste0(destfile), method = "curl")
+## Copying the file into data lake 
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_Species_Association_data.xlsx'))
+
+# COMMAND ----------
+
+### Download the file
+options(download.file.method="curl", download.file.extra="-k -L")
+url1<-'https://www.environment.nsw.gov.au/-/media/OEH/Corporate-Site/Documents/BioNet/bionet-threatened-populations-to-plant-community-types-association-data.xlsx'
+destfile <- paste0(tempfile(),'.xlsx')
+download.file(url = url1, destfile = paste0(destfile), method = "curl")
+## Copying the file into data lake 
+dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_Populations_Association_data.xlsx'))
 
 # COMMAND ----------
 
@@ -95,7 +115,7 @@ dbutils.fs.cp(paste0('file:',destfile), paste0('/mnt/projects-dpie-paas/Master_O
 
 # COMMAND ----------
 
-dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT.xlsx'),"file:/tmp/BioNet_PCT.xlsx")
+dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_PCT.xlsx'),"file:/tmp/BioNet_PCT.xlsx")
 excel_sheets('/tmp/BioNet_PCT.xlsx')
 
 bionet_data <- read_excel('/tmp/BioNet_PCT.xlsx', sheet = "PCT Data PQ" )
@@ -116,7 +136,7 @@ dim(bionet_data)
 
 # COMMAND ----------
 
-dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/Input_data/BioNet_PCT_Association_data.xlsx'),"file:/tmp/BioNet_PCT_Association_data.xlsx")
+dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_PCT_Association_data.xlsx'),"file:/tmp/BioNet_PCT_Association_data.xlsx")
 excel_sheets('/tmp/BioNet_PCT_Association_data.xlsx')
 
 bionet_associated <- read_excel('/tmp/BioNet_PCT_Association_data.xlsx', sheet = "All PCTs - State TECs Data PQ" )
@@ -124,6 +144,35 @@ bionet_associated <- read_excel('/tmp/BioNet_PCT_Association_data.xlsx', sheet =
 # COMMAND ----------
 
 display(bionet_associated)
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC Uploading Threatened Species data
+
+# COMMAND ----------
+
+dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_Species_Association_data.xlsx'),"file:/tmp/BioNet_Species_Association_data.xlsx")
+excel_sheets('/tmp/BioNet_Species_Association_data.xlsx')
+
+bionet_spec_associated <- read_excel('/tmp/BioNet_Species_Association_data.xlsx', sheet = "Threatened Species-PCT Data PQ")
+
+# COMMAND ----------
+
+display(bionet_spec_associated)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 
+# MAGIC Updating Threatened populations data
+
+# COMMAND ----------
+
+dbutils.fs.cp(paste0('/mnt/projects-dpie-paas/Master_OTG/master/Input_data/BioNet_Populations_Association_data.xlsx'),"file:/tmp/BioNet_Populations_Association_data.xlsx")
+excel_sheets('/tmp/BioNet_Populations_Association_data.xlsx')
+
+bionet_pop_associated <- read_excel('/tmp/BioNet_Populations_Association_data.xlsx', sheet = "Thr Populations-PCT Data PQ")
 
 # COMMAND ----------
 
@@ -573,6 +622,60 @@ display(extended_pct_final[extended_pct_final$PCTID==689,])
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC # Species
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ### Bionet Species database
+
+# COMMAND ----------
+
+bionet_spec <- bionet_spec_associated%>%
+  select(profileID, scientificName, vernacularName, kingdom) %>%
+  rename(Species_ID = profileID) %>%
+  rename(Species_Scientific_Name = scientificName) %>%
+  rename(Species_Common_Name = vernacularName) %>% 
+  rename(Kingdom = kingdom) %>%
+  arrange(Species_ID)
+
+bionet_spec <- unique(bionet_spec)
+
+# COMMAND ----------
+
+display(bionet_spec)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ###Bionet threatened populations database
+
+# COMMAND ----------
+
+bionet_pop <- bionet_pop_associated%>%
+  select(profileID, scientificName, vernacularName, kingdom, classOfCredit) %>%
+  rename(Species_ID = profileID) %>%
+  rename(Species_Scientific_Name = scientificName) %>%
+  rename(Species_Common_Name = vernacularName) %>% 
+  rename(Kingdom = kingdom) %>%
+  arrange(Species_ID)
+
+bionet_pop <- unique(bionet_spec)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Binding both datasets
+
+# COMMAND ----------
+
+bionet_spec$origin <- 'Threatened Species'
+bionet_pop$origin <- 'Threatened Populations'
+species_final <- rbind(bionet_spec, bionet_pop)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC 
 # MAGIC #Saving tables to DL
 
@@ -583,18 +686,23 @@ display(extended_pct_final)
 # COMMAND ----------
 
 write.csv(all_pct, '/tmp/Master_extended.csv', row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/Output_data/Master_extended.csv'))
+dbutils.fs.cp(paste0('file:','/tmp/Master_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Output_data/Master_extended.csv'))
 
 # COMMAND ----------
 
 write.csv(extended_pct_otg_final, '/tmp/Master_PCTOTGGrouped_extended.csv',row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_PCTOTGGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/Output_data/Master_PCTOTGGrouped_extended.csv'))
+dbutils.fs.cp(paste0('file:','/tmp/Master_PCTOTGGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Output_data/Master_PCTOTGGrouped_extended.csv'))
 
 # COMMAND ----------
 
 write.csv(extended_pct_final, '/tmp/Master_PCTGrouped_extended.csv',row.names = FALSE)
-dbutils.fs.cp(paste0('file:','/tmp/Master_PCTGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/Output_data/Master_PCTGrouped_extended.csv'))
+dbutils.fs.cp(paste0('file:','/tmp/Master_PCTGrouped_extended.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Output_data/Master_PCTGrouped_extended.csv'))
 
+
+# COMMAND ----------
+
+write.csv(species_final, '/tmp/Master_Species.csv',row.names = FALSE)
+dbutils.fs.cp(paste0('file:','/tmp/Master_Species.csv'), paste0('/mnt/projects-dpie-paas/Master_OTG/master/Output_data/Master_Species.csv'))
 
 # COMMAND ----------
 
