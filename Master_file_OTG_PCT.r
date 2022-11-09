@@ -632,7 +632,7 @@ display(extended_pct_final[extended_pct_final$PCTID==689,])
 # COMMAND ----------
 
 bionet_spec <- bionet_spec_associated%>%
-  select(profileID, scientificName, vernacularName, kingdom) %>%
+  select(profileID, scientificName, vernacularName, kingdom, classOfCredit) %>%
   rename(Species_ID = profileID) %>%
   rename(Species_Scientific_Name = scientificName) %>%
   rename(Species_Common_Name = vernacularName) %>% 
@@ -660,7 +660,11 @@ bionet_pop <- bionet_pop_associated%>%
   rename(Kingdom = kingdom) %>%
   arrange(Species_ID)
 
-bionet_pop <- unique(bionet_spec)
+bionet_pop <- unique(bionet_pop)
+
+# COMMAND ----------
+
+display(bionet_pop)
 
 # COMMAND ----------
 
